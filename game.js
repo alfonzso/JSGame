@@ -26,6 +26,40 @@ function fillTextMultiLine(ctx, text, x, y) {
   }
 }
 
+/**
+ * @param {number} miliseconds
+ */
+function sleep(miliseconds) {
+  var currentTime = new Date().getTime();
+
+  while (currentTime + miliseconds >= new Date().getTime()) {}
+}
+
+/**
+ *
+ * @param {Point} A
+ * @param {number} rad
+ */
+function debugPoint(A, rad) {
+  // let slashA = new Line(
+  //   new Point(A.x - 10, A.y - 10),
+  //   new Point(A.x + 10, A.y + 10),
+  // );
+  // let slashB = new Line(
+  //   new Point(A.x + 10, A.y - 10),
+  //   new Point(A.x - 10, A.y + 10),
+  // );
+  // drawALine(slashA, "yellow");
+  // drawALine(slashB, "yellow");
+  ctx.beginPath();
+  ctx.arc(A.x, A.y, rad, 0, 2 * Math.PI);
+  // ctx.fillStyle = "red";
+  // ctx.fill();
+  // ctx.lineWidth = 4;
+  // ctx.strokeStyle = "blue";
+  ctx.stroke();
+}
+
 const cssW = canvas.clientWidth || window.innerWidth;
 const cssH = (canvas.clientHeight || window.innerHeight) - 100;
 
@@ -53,6 +87,30 @@ function ccw(A, B, C) {
 }
 
 /**
+ * @param {Point} A
+ * @param {Point} B
+ * @param {Point} C
+ * @param {Point} D
+ * @returns {{x: number, y: number, seg1: boolean, seg2: boolean }}
+ */
+function line_intersect(A, B, C, D) {
+  let ua,
+    ub,
+    denom = (C.y - A.y) * (B.x - A.x) - (B.y - A.y) * (C.x - A.x);
+  if (denom == 0) {
+    return null;
+  }
+  ua = ((D.x - C.x) * (A.y - C.y) - (D.y - C.y) * (A.x - C.x)) / denom;
+  ub = ((B.x - A.x) * (A.y - C.y) - (B.y - A.y) * (A.x - C.x)) / denom;
+  return {
+    x: A.x + ua * (B.x - A.x),
+    y: A.y + ua * (B.y - A.y),
+    seg1: ua >= 0 && ua <= 1,
+    seg2: ub >= 0 && ub <= 1,
+  };
+}
+
+/**
  * @param {Line} theLine
  * @param {string} color
  */
@@ -60,11 +118,17 @@ function drawALine(theLine, color) {
   let A = theLine.A;
   let B = theLine.B;
 
+  // ctx.beginPath();
+  let oldStyle = ctx.strokeStyle;
+  let oldLW = ctx.lineWidth;
+  ctx.lineWidth = 5;
   ctx.strokeStyle = color;
-  ctx.beginPath();
   ctx.moveTo(...A.toParam());
   ctx.lineTo(...B.toParam());
   ctx.stroke();
+  ctx.strokeStyle = oldStyle;
+  ctx.lineWidth = oldLW;
+  // ctx.closePath();
 }
 
 /**
@@ -77,8 +141,8 @@ function intersect(userLine, otherLine) {
   let B = userLine.B;
   let C = otherLine.A;
   let D = otherLine.B;
-  drawALine(userLine, "green");
-  drawALine(otherLine, "white");
+  // drawALine(userLine, "green");
+  // drawALine(otherLine, "white");
   // let intersect = ccw(A,C,D) != ccw(B,C,D) && ccw(A,B,C) != ccw(A,B,D)
   // console.log(A)
   // console.log(B)
@@ -170,9 +234,16 @@ class Box {
 
   /** [TODO:description] */
   drawer() {
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.point.x, this.point.y, this.w, this.h);
+    // ctx.beginPath()
+    // ctx.fillStyle = this.color;
+    // ctx.fillRect(this.point.x, this.point.y, this.w, this.h);
+    let oldStyle = ctx.strokeStyle;
+    ctx.strokeStyle = "white";
+    ctx.rect(this.point.x, this.point.y, this.w, this.h);
     this.calcPoint(this.point.x, this.point.y, this.w, this.h);
+    ctx.stroke();
+    ctx.strokeStyle = oldStyle;
+    // ctx.closePath()
   }
 
   [Symbol.iterator]() {
@@ -232,6 +303,11 @@ function loop(now) {
   if (dt > MAX_DT) dt = MAX_DT;
   lastTime = now;
 
+  ctx.beginPath();
+  const W = canvas._cssWidth,
+    H = canvas._cssHeight;
+  ctx.clearRect(0, 0, W, H);
+
   update(dt);
   draw();
 
@@ -273,26 +349,26 @@ function update(dt) {
   // gravity
   actor.vy += GRAVITY * dt;
 
-  let userLine = new Line(
-    new Point(actor.C.x - 10, actor.C.y - 10),
-    new Point(actor.C.x + 10, actor.C.y + 10),
-  );
-  actor.onSurface = false
-  for (const boxes of boxList) {
-    for (const boxLine of boxes.lines) {
-      if (intersect(userLine, boxLine)) {
-        actor.vy = 0;
-        actor.point.y = boxLine.A.y - actor.h;
-        // debugger
-        let lorf = actor.vx > 0 ? -1 : 1;
-        let grnd = GROUND_FRICTION * 100 * dt * lorf;
-        actor.vx += grnd;
-        if (actor.vx / grnd >= 0 && actor.vx / grnd <= 1) actor.vx = 0;
-        actor.onSurface = true;
-        continue;
-      }
-    }
-  }
+  // let userLine = new Line(
+  //   new Point(actor.C.x - 10, actor.C.y - 10),
+  //   new Point(actor.C.x + 10, actor.C.y + 10),
+  // );
+  // actor.onSurface = false
+  // for (const boxes of boxList) {
+  //   for (const boxLine of boxes.lines) {
+  //     if (intersect(userLine, boxLine)) {
+  //       actor.vy = 0;
+  //       actor.point.y = boxLine.A.y - actor.h;
+  //       // debugger
+  //       let lorf = actor.vx > 0 ? -1 : 1;
+  //       let grnd = GROUND_FRICTION * 100 * dt * lorf;
+  //       actor.vx += grnd;
+  //       if (actor.vx / grnd >= 0 && actor.vx / grnd <= 1) actor.vx = 0;
+  //       actor.onSurface = true;
+  //       continue;
+  //     }
+  //   }
+  // }
 
   if (keys.jump && actor.onSurface) {
     actor.vx *= Math.pow(AIR_DRAG, dt);
@@ -301,8 +377,75 @@ function update(dt) {
   }
 
   // integrate position
-  actor.point.x += actor.vx * dt;
-  actor.point.y += actor.vy * dt;
+  let nextX = actor.point.x + actor.vx * dt;
+  let nextY = actor.point.y + actor.vy * dt;
+
+  // actor.point.x +=
+  // actor.point.y += actor.vy * dt;
+
+  let userLine = new Line(actor.C, new Point(nextX, nextY));
+
+  // let test = new Line(new Point(100, 100), new Point(200, 200));
+  // drawALine(test, "yellow");
+  drawALine(userLine, "red");
+  // debugger
+  let _skip = false;
+  for (const boxes of boxList) {
+    if (_skip) continue;
+    for (const boxLine of boxes.lines) {
+      if (intersect(userLine, boxLine)) {
+        let interPoint = line_intersect(
+          userLine.A,
+          userLine.B,
+          boxLine.A,
+          boxLine.B,
+        );
+        actor.vy = 0;
+        // actor.point.y = boxLine.A.y - actor.h;
+        // debugger
+        nextX = interPoint.x;
+        nextY = interPoint.y - actor.h;
+
+        // console.log("#####################")
+        // console.log(nextX,nextY)
+
+        debugPoint(new Point(nextX, nextY), 5);
+        debugPoint(new Point(actor.point.x, actor.point.y), 10);
+        debugPoint(new Point(interPoint.x, interPoint.y), 15);
+
+        actor.point.x = nextX;
+        actor.point.y = nextY - 50;
+
+        // debugger
+        // sleep(1000)
+
+        // let test = new Line(new Point(100, 100), new Point(200, 200));
+        // drawALine(test, "white");
+
+        debugger;
+
+        let lorf = actor.vx > 0 ? -1 : 1;
+        let grnd = GROUND_FRICTION * 100 * dt * lorf;
+        actor.vx += grnd;
+        if (actor.vx / grnd >= 0 && actor.vx / grnd <= 1) actor.vx = 0;
+        actor.onSurface = true;
+        _skip = false;
+        continue;
+      }
+    }
+  }
+
+  // drawALine(test, "yellow");
+  // debugger
+  // sleep(100)
+
+  actor.point.x = nextX;
+  actor.point.y = nextY;
+
+  // let userLine = new Line(
+  //   new Point(actor.C.x - 10, actor.C.y - 10),
+  //   new Point(actor.C.x + 10, actor.C.y + 10),
+  // );
 
   // world bounds and floor collision
   const floorY = canvas._cssHeight - actor.h;
@@ -334,10 +477,8 @@ function update(dt) {
 
 // ---- draw ----
 function draw() {
-  const W = canvas._cssWidth,
-    H = canvas._cssHeight;
-  ctx.clearRect(0, 0, W, H);
-
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1
   // ctx.fillStyle = "#09f";
   // ctx.fillRect(actor.point.x, actor.point.y, actor.w, actor.h);
   actor.drawer();
@@ -346,8 +487,13 @@ function draw() {
     bx.drawer();
   }
 
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.font = "12px sans-serif";
+  // ctx.beginPath();
+  // ctx.arc(95, 50, 40, 0, 2 * Math.PI);
+  // ctx.strokeStyle = "blue";
+  // ctx.stroke();
+
+  // ctx.fillStyle = "rgba(255,255,255,0.85)";
+  // ctx.font = "12px sans-serif";
 
   // x: ${box01.x} innerH: ${innerHeight}
   // y: ${box01.y} innerW: ${innerWidth}
